@@ -13,7 +13,7 @@
 
 <title>Portfolio 5</title>
 
-<script src="site_libs/header-attrs-2.13/header-attrs.js"></script>
+<script src="site_libs/header-attrs-2.29/header-attrs.js"></script>
 <script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link href="site_libs/bootstrap-3.3.5/css/bootstrap.min.css" rel="stylesheet" />
@@ -141,11 +141,15 @@ $(document).ready(function () {
     href = "index.html";
   var menuAnchor = $('a[href="' + href + '"]');
 
-  // mark it active
-  menuAnchor.tab('show');
-
-  // if it's got a parent navbar menu mark it active as well
-  menuAnchor.closest('li.dropdown').addClass('active');
+  // mark the anchor link active (and if it's in a dropdown, also mark that active)
+  var dropdown = menuAnchor.closest('li.dropdown');
+  if (window.bootstrap) { // Bootstrap 4+
+    menuAnchor.addClass('active');
+    dropdown.find('> .dropdown-toggle').addClass('active');
+  } else { // Bootstrap 3
+    menuAnchor.parent().addClass('active');
+    dropdown.addClass('active');
+  }
 
   // Navbar adjustments
   var navHeight = $(".navbar").first().height() + 15;
@@ -174,8 +178,8 @@ $(document).ready(function () {
   border-radius: 4px;
 }
 
-.tabset-dropdown > .nav-tabs > li.active:before {
-  content: "";
+.tabset-dropdown > .nav-tabs > li.active:before, .tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "\e259";
   font-family: 'Glyphicons Halflings';
   display: inline-block;
   padding: 10px;
@@ -183,16 +187,9 @@ $(document).ready(function () {
 }
 
 .tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
-  content: "&#xe258;";
-  border: none;
-}
-
-.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
-  content: "";
+  content: "\e258";
   font-family: 'Glyphicons Halflings';
-  display: inline-block;
-  padding: 10px;
-  border-right: 1px solid #ddd;
+  border: none;
 }
 
 .tabset-dropdown > .nav-tabs > li.active {
@@ -298,13 +295,92 @@ $(document).ready(function () {
 </div>
 
 
-<blockquote>
-<p>The projects should be numbered consecutively (i.e., in the order in
-which you began them), and should include for each project a description
-of the goal, the product (computer program, hand graph, computer graph,
-etc.), the data, and some interpretation. Reports must be reproducible
-and of high quality in terms of writing, grammar, presentation, etc.</p>
-</blockquote>
+<p>In this portfolio, I will continue the project started at portfolio
+4, using the dataset diamonds. I will fit a linear regression model to
+see how the cut of a diamond affects its price and how much it explains
+the differences in prices.</p>
+<p>#load the data</p>
+<pre class="r"><code>library(ggplot2)
+data(diamonds)
+head(diamonds)</code></pre>
+<pre><code>## # A tibble: 6 × 10
+##   carat cut       color clarity depth table price     x     y     z
+##   &lt;dbl&gt; &lt;ord&gt;     &lt;ord&gt; &lt;ord&gt;   &lt;dbl&gt; &lt;dbl&gt; &lt;int&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;
+## 1  0.23 Ideal     E     SI2      61.5    55   326  3.95  3.98  2.43
+## 2  0.21 Premium   E     SI1      59.8    61   326  3.89  3.84  2.31
+## 3  0.23 Good      E     VS1      56.9    65   327  4.05  4.07  2.31
+## 4  0.29 Premium   I     VS2      62.4    58   334  4.2   4.23  2.63
+## 5  0.31 Good      J     SI2      63.3    58   335  4.34  4.35  2.75
+## 6  0.24 Very Good J     VVS2     62.8    57   336  3.94  3.96  2.48</code></pre>
+<pre class="r"><code>summary(diamonds)</code></pre>
+<pre><code>##      carat               cut        color        clarity          depth      
+##  Min.   :0.2000   Fair     : 1610   D: 6775   SI1    :13065   Min.   :43.00  
+##  1st Qu.:0.4000   Good     : 4906   E: 9797   VS2    :12258   1st Qu.:61.00  
+##  Median :0.7000   Very Good:12082   F: 9542   SI2    : 9194   Median :61.80  
+##  Mean   :0.7979   Premium  :13791   G:11292   VS1    : 8171   Mean   :61.75  
+##  3rd Qu.:1.0400   Ideal    :21551   H: 8304   VVS2   : 5066   3rd Qu.:62.50  
+##  Max.   :5.0100                     I: 5422   VVS1   : 3655   Max.   :79.00  
+##                                     J: 2808   (Other): 2531                  
+##      table           price             x                y         
+##  Min.   :43.00   Min.   :  326   Min.   : 0.000   Min.   : 0.000  
+##  1st Qu.:56.00   1st Qu.:  950   1st Qu.: 4.710   1st Qu.: 4.720  
+##  Median :57.00   Median : 2401   Median : 5.700   Median : 5.710  
+##  Mean   :57.46   Mean   : 3933   Mean   : 5.731   Mean   : 5.735  
+##  3rd Qu.:59.00   3rd Qu.: 5324   3rd Qu.: 6.540   3rd Qu.: 6.540  
+##  Max.   :95.00   Max.   :18823   Max.   :10.740   Max.   :58.900  
+##                                                                   
+##        z         
+##  Min.   : 0.000  
+##  1st Qu.: 2.910  
+##  Median : 3.530  
+##  Mean   : 3.539  
+##  3rd Qu.: 4.040  
+##  Max.   :31.800  
+## </code></pre>
+<pre class="r"><code>?diamonds</code></pre>
+<p>#Visualizing Price Distribution</p>
+<pre class="r"><code>ggplot(diamonds, aes(x = price)) +
+  geom_histogram(binwidth = 200, fill = &quot;purple&quot;,color = &quot;black&quot;, alpha = 0.5) +
+  labs(title = &quot;Distribution of Diamond Prices&quot;, x = &quot;Price (USD)&quot;, y = &quot;Count&quot;)</code></pre>
+<p><img src="p05_files/figure-html/unnamed-chunk-2-1.png" width="672" /></p>
+<pre class="r"><code>##this graph shows a right-skewed distribution, with most diamond prices falling below $5000. </code></pre>
+<p>#Price and Cut</p>
+<pre class="r"><code>ggplot(diamonds, aes(x = cut, y = price)) +
+  stat_summary(fun = mean, geom = &quot;bar&quot;, fill = &quot;skyblue&quot;, color = &quot;black&quot;) +
+  labs(title = &quot;Average Diamond Price by Cut&quot;, x = &quot;Cut&quot;, y = &quot;Average Price&quot;)</code></pre>
+<p><img src="p05_files/figure-html/unnamed-chunk-3-1.png" width="672" /></p>
+<p>#Price, Cut, Linear Regression Model</p>
+<pre class="r"><code>Price_Cut &lt;- lm(price ~ cut, data=diamonds)
+summary (Price_Cut)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = price ~ cut, data = diamonds)
+## 
+## Residuals:
+##    Min     1Q Median     3Q    Max 
+##  -4258  -2741  -1494   1360  15348 
+## 
+## Coefficients:
+##             Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept)  4062.24      25.40 159.923  &lt; 2e-16 ***
+## cut.L        -362.73      68.04  -5.331  9.8e-08 ***
+## cut.Q        -225.58      60.65  -3.719    2e-04 ***
+## cut.C        -699.50      52.78 -13.253  &lt; 2e-16 ***
+## cut^4        -280.36      42.56  -6.588  4.5e-11 ***
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 3964 on 53935 degrees of freedom
+## Multiple R-squared:  0.01286,    Adjusted R-squared:  0.01279 
+## F-statistic: 175.7 on 4 and 53935 DF,  p-value: &lt; 2.2e-16</code></pre>
+<pre class="r"><code>summary(Price_Cut)$r.squared</code></pre>
+<pre><code>## [1] 0.01286207</code></pre>
+<pre class="r"><code>#intercept 4062.24 
+
+# price  = -362.73 cut.L -225.58 cut.Q -699.50 cut.C -280.36 cut^4  + 4062.24 
+#r squared = 0.01279 
+
+# r squared = 0.01279 . means that approximately 1.279% of the variance in diamond prices is explained by the carat variable alone. </code></pre>
 
 
 

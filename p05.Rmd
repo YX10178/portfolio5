@@ -1,5 +1,42 @@
 ---
 title: "Portfolio 5"
 ---
+In this portfolio, I will continue the project started at portfolio 4, using the dataset diamonds. I will fit a linear regression model to see how the cut of a diamond affects its price and how much it explains the differences in prices. 
+ 
+ #load the data
+```{r}
+library(ggplot2)
+data(diamonds)
+head(diamonds)
+summary(diamonds)
+?diamonds
+```
 
-> The projects should be numbered consecutively (i.e., in the order in which you began them), and should include for each project a description of the goal, the product (computer program, hand graph, computer graph, etc.), the data, and some interpretation. Reports must be reproducible and of high quality in terms of writing, grammar, presentation, etc.
+#Visualizing Price Distribution
+```{r}
+ggplot(diamonds, aes(x = price)) +
+  geom_histogram(binwidth = 200, fill = "purple",color = "black", alpha = 0.5) +
+  labs(title = "Distribution of Diamond Prices", x = "Price (USD)", y = "Count")
+##this graph shows a right-skewed distribution, with most diamond prices falling below $5000. 
+```
+
+#Price and Cut
+```{r}
+ggplot(diamonds, aes(x = cut, y = price)) +
+  stat_summary(fun = mean, geom = "bar", fill = "skyblue", color = "black") +
+  labs(title = "Average Diamond Price by Cut", x = "Cut", y = "Average Price")
+
+```
+
+#Price, Cut, Linear Regression Model
+```{r}
+Price_Cut <- lm(price ~ cut, data=diamonds)
+summary (Price_Cut)
+summary(Price_Cut)$r.squared
+#intercept 4062.24 
+
+# price  = -362.73 cut.L -225.58 cut.Q -699.50 cut.C -280.36 cut^4  + 4062.24 
+#r squared = 0.01279 
+
+# r squared = 0.01279 . means that approximately 1.279% of the variance in diamond prices is explained by the carat variable alone. 
+```
